@@ -16,3 +16,4 @@ pydantic
 smolagents
 litellm
 groq
+langchain-hyperbrowser
