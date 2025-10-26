@@ -1,77 +1,51 @@
-Course Recommender Agent System
+PragyanAI Course Recommendation Agent (SmolAgents Version)
 
-This project implements a multi-agent course recommendation system based on the architecture specified. It uses CrewAI for agent orchestration, Groq for low-latency LLM inference (LLaMA 3), Streamlit for the UI, and a dedicated scraping and analysis pipeline for populating the course database.
+This project implements a multi-agent course recommendation system using SmolAgents and Streamlit.
 
-Project Structure
+This is a complete, working application that replaces the incomplete CrewAI version in the original repository. It uses a team of three specialized AI agents to provide personalized course recommendations based on a user's preferences and the content of a course website.
 
-streamlit_app.py: The main user interface, built with Streamlit.
+Architecture
 
-crew.py: Defines the main CrewAI orchestration, assembling agents and tasks.
+This application uses a sequential, multi-agent workflow:
 
-agents.py: Defines the responsibilities and prompts for each individual agent (Intake, Skill, Price, etc.).
+Streamlit UI (streamlit_app.py): The user provides their Groq API key, a target URL for a course website, and their personal preferences.
 
-tools.py: Contains the Python-based tools (logic, calculations, DB lookups) that the agents use.
+Agent 1: Course Scraper (agents.py): This agent receives the URL, uses the ScrapeWebsiteTool (tools.py) to fetch the raw text content of the page, and passes it to the next agent.
 
-llm_client.py: A centralized client for interacting with the Groq API for LLaMA 3.
+Agent 2: Course Analyst (agents.py): This agent receives the raw text. Its job is to read the text, identify all the courses, and extract a structured JSON list containing each course's title, description, and url.
 
-data_models.py: Pydantic models for Course and UserProfile to ensure structured data.
+Agent 3: Recommendation Agent (agents.py): This agent receives the structured JSON data and the user's original preferences. Its job is to act as a friendly advisor, comparing the user's needs to the available courses and writing a personalized recommendation in Markdown.
 
-vector_store.py: A wrapper for faiss and sentence-transformers to manage course embeddings and semantic search.
+Streamlit UI (streamlit_app.py): The final recommendation is displayed to the user.
 
-scraper.py: A data scraping module using Playwright and BeautifulSoup to fetch course data.
+How to Run
 
-analysis.py: A module for the "Course Analyzer" logic, using an LLM to extract structured data from raw course text.
+Get a Groq API Key:
 
-requirements.txt: A list of all Python dependencies.
+This app uses Groq for high-speed LLM inference (Llama 3).
 
-Setup
+Sign up for a free account at https://console.groq.com/keys and create an API key.
 
-Install Dependencies:
+Clone this repository and install dependencies:
 
+git clone <your-repo-url>
+cd <your-repo-name>
 pip install -r requirements.txt
-playwright install chromium
 
 
-Set Environment Variables:
-Create a .env file in the root directory and add your API keys:
-
-GROQ_API_KEY=your_groq_api_key_here
-CREWAI_API_KEY=your_crewai_api_key_here
-
-
-Prepare Data:
-
-Run the scraper to generate a courses_parsed.jsonl file:
-
-python scraper.py
-
-
-Run the analysis pipeline to create structured course data (this will call the LLM):
-
-python analysis.py
-
-
-Run an indexing script (to be built) to load courses_structured.jsonl into the vector_store.
-
-Run the App:
+Run the Streamlit App:
 
 streamlit run streamlit_app.py
 
 
-Quick Citations (Load-Bearing Sources)
+Use the App:
 
-As requested, here are the primary technologies and sources referenced in the design:
+The app will open in your browser.
 
-LLaMA 3.1 (70B) instruction-tuned model: Model card & release info (via Groq)
+Paste your Groq API key into the sidebar.
 
-Groq: Low-latency inference hardware + API reference
+Enter the URL of the course page you want to analyze.
 
-CrewAI (CrewAI AMP): Multi-agent orchestration, visual agent builder and docs
+Write down your learning preferences.
 
-Streamlit: UI framework
-
-Playwright: Browser automation for scraping
-
-SentenceTransformers: Embedding models
-
-Faiss: Vector search library
+Click "Get Recommendations" and watch the agents work!
