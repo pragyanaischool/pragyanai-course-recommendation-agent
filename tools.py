@@ -1,5 +1,5 @@
 import os
-from langchain_core.tools import tool  # <-- This import is the fix
+from langchain_core.tools import Tool  # <-- Import the 'Tool' class
 from langchain_hyperbrowser import HyperbrowserScrapeTool
 
 # --- MODIFICATION ---
@@ -13,12 +13,10 @@ _hyperbrowser_scraper = HyperbrowserScrapeTool(api_key=HYPERBROWSER_API_KEY)
 # --- END MODIFICATION ---
 
 
-@tool
-def scrape_website_with_hyperbrowser(url: str) -> str:
+def _scrape_website_with_hyperbrowser(url: str) -> str:
     """
-    Scrapes a single website URL using Hyperbrowser and returns the content
-    as Markdown. Use this tool to get the text content from a webpage.
-    Input must be a single URL string.
+    Internal function to scrape a website using Hyperbrowser.
+    This is not a tool itself, but the function the tool will run.
     """
 
     # --- ADDED CHECK ---
@@ -50,7 +48,24 @@ def scrape_website_with_hyperbrowser(url: str) -> str:
 
 def get_scrape_tool():
     """
-    Initializes and returns the wrapped Hyperbrowser scraping tool.
+    Initializes and returns the wrapped Hyperbrowser scraping tool
+    as a BaseTool object.
     """
-    # This now returns our custom @tool-decorated function
-    return scrape_website_with_hyperbrowser
+    
+    # --- THIS IS THE FIX ---
+    # We manually create a Tool object. This is a subclass of BaseTool
+    # and will pass the assertion check in SmolAgents.
+    scrape_tool = Tool(
+        name="scrape_website_with_hyperbrowser",
+        func=_scrape_website_with_hyperbrowser,
+        description=(
+            "Scrapes a single website URL using Hyperbrowser and returns the content "
+            "as Markdown. Use this tool to get the text content from a webpage. "
+            "Input must be a single URL string."
+        )
+    )
+    # --- END FIX ---
+    
+    return scrape_tool
+
+
