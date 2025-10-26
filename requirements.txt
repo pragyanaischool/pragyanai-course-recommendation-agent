@@ -1,8 +1,9 @@
 streamlit
 numpy
 pandas
-crewai
-crewai_tools
+langchain
+langchain-groq
+langchain-community
 groq
 python-dotenv
 requests
@@ -12,3 +13,6 @@ scikit-learn
 sentence-transformers
 faiss-cpu
 pydantic
+smolagents
+litellm
+groq
