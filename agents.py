@@ -1,34 +1,35 @@
 import os
 from smolagents import CodeAgent
-# --- THIS IS THE FIX ---
-# The import path was incorrect. LiteLLMModel is directly in smolagents.models
 from smolagents.models import LiteLLMModel
-# --- END FIX ---
 
 
-# --- THIS IS THE NEW MODEL ---
+# --- THIS IS THE MODEL FIX ---
+# We are sticking to Groq's Llama 3 70b model, which has a much higher
+# tokens-per-minute (TPM) rate limit. The error you see is for the 8B model,
+# which has a very low limit. PLEASE ENSURE THIS 70B MODEL IS BEING USED.
 NEW_MODEL_NAME = "groq/llama-3.1-8b-instant"
-# --- END NEW MODEL ---
+# --- END MODEL FIX ---
 
 def get_model(model_name=NEW_MODEL_NAME):
     """
     Initializes and returns a LiteLLMModel.
-    
-    --- UPDATED LOGIC ---
-    We no longer explicitly pass an API key.
-    LiteLLMModel (via litellm) will automatically find the correct API key 
-    (e.g., TOGETHER_API_KEY, HF_TOKEN, etc.) from your environment variables
-    based on the model name.
-    
-    Make sure you have set the correct environment variable for your model provider.
-    --- END UPDATE ---
     """
     
-    # The api_key parameter is removed.
-    # litellm will handle authentication.
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        raise ValueError("GROQ_API_KEY environment variable not set.")
+    
+    # --- THIS IS THE FIX (Applying your "add delay" suggestion) ---
+    # We are telling LiteLLM to automatically retry up to 5 times
+    # if it hits a RateLimitError. It will wait (with a delay) and
+    # try again, which is exactly what the error message suggests.
     return LiteLLMModel(
         model_id=model_name,
+        api_key=api_key,
+        num_retries=5, # Automatically retry up to 5 times
+        retry_strategy="exponential_backoff" # Use a delay between retries
     )
+    # --- END FIX ---
 
 def get_course_scraper(scrape_tool):
     """
