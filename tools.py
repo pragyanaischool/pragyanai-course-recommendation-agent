@@ -1,71 +1,37 @@
 import os
-from langchain_core.tools import Tool  # <-- Import the 'Tool' class
+from smolagents.tools import PythonTool  # ✅ correct BaseTool subclass
 from langchain_hyperbrowser import HyperbrowserScrapeTool
 
-# --- MODIFICATION ---
-# Load the Hyperbrowser API key from environment variables
-# You MUST set this environment variable for the tool to work.
+# Load the Hyperbrowser API key
 HYPERBROWSER_API_KEY = os.getenv("HYPERBROWSER_API_KEY")
 
-# Initialize the underlying tool once to be reused
-# Pass the API key during initialization
+# Initialize the Hyperbrowser scraper
 _hyperbrowser_scraper = HyperbrowserScrapeTool(api_key=HYPERBROWSER_API_KEY)
-# --- END MODIFICATION ---
-
 
 def _scrape_website_with_hyperbrowser(url: str) -> str:
-    """
-    Internal function to scrape a website using Hyperbrowser.
-    This is not a tool itself, but the function the tool will run.
-    """
-
-    # --- ADDED CHECK ---
+    """Scrape a website using Hyperbrowser."""
     if not HYPERBROWSER_API_KEY:
-        return (
-            "Error: HYPERBROWSER_API_KEY environment variable is not set. "
-            "This tool cannot function without an API key."
-        )
-    # --- END CHECK ---
+        return "Error: HYPERBROWSER_API_KEY environment variable is not set."
 
     try:
-        # Hyperbrowser expects a dictionary for its invoke method
         result = _hyperbrowser_scraper.invoke(
             {"url": url, "scrape_options": {"formats": ["markdown"]}}
         )
-
-        # The tool returns a dictionary, let's grab the markdown content
-        # Check if 'markdown' key exists and is not empty
         if isinstance(result, dict) and result.get("markdown"):
             return result["markdown"]
-        else:
-            # Fallback in case the structure is different or markdown is empty
-            return str(result)
-
+        return str(result)
     except Exception as e:
-        # Pass along the error message
         return f"Error scraping website {url}: {e}"
 
-
 def get_scrape_tool():
-    """
-    Initializes and returns the wrapped Hyperbrowser scraping tool
-    as a BaseTool object.
-    """
-    
-    # --- THIS IS THE FIX ---
-    # We manually create a Tool object. This is a subclass of BaseTool
-    # and will pass the assertion check in SmolAgents.
-    scrape_tool = Tool(
+    """Return a SmolAgents-compatible scraping tool."""
+    scrape_tool = PythonTool(
         name="scrape_website_with_hyperbrowser",
-        func=_scrape_website_with_hyperbrowser,
         description=(
-            "Scrapes a single website URL using Hyperbrowser and returns the content "
-            "as Markdown. Use this tool to get the text content from a webpage. "
-            "Input must be a single URL string."
-        )
+            "Scrapes a single website URL using Hyperbrowser and returns Markdown text content."
+        ),
+        func=_scrape_website_with_hyperbrowser,  # ✅ Must be a Python callable
     )
-    # --- END FIX ---
-    
     return scrape_tool
 
 
