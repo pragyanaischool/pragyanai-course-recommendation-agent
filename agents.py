@@ -4,10 +4,9 @@ from smolagents.models import LiteLLMModel
 
 
 # --- THIS IS THE MODEL FIX ---
-# The comment was correct, but the variable was not.
 # We are NOW sticking to Groq's Llama 3 70b model, which has a much higher
-# tokens-per-minute (TPM) rate limit. This will fix the error.
-NEW_MODEL_NAME = "groq/llama-3.1-8b-instant"
+# tokens-per-minute (TPM) rate limit. This will fix the rate limit errors.
+NEW_MODEL_NAME = "groq/llama3-70b-8192"
 # --- END MODEL FIX ---
 
 def get_model(model_name=NEW_MODEL_NAME):
@@ -27,13 +26,11 @@ def get_model(model_name=NEW_MODEL_NAME):
         model_id=model_name,
         api_key=api_key,
         num_retries=5, # Automatically retry up to 5 times
-        retry_strategy="exponential_backoff", # Use a delay between retries
-        # --- ADDING EXPLICIT DELAY CONTROLS ---
-        # Based on your suggestion to control the delay, we set the
-        # initial delay to 10 seconds, as the errors suggested ~9-11s.
-        retry_base_backoff=30.0, # Initial delay in seconds
-        retry_max_backoff=120.0  # Max delay in seconds
-        # --- END OF NEW DELAY CONTROLS ---
+        retry_strategy="exponential_backoff" # Use a delay between retries
+        # --- REMOVED UNSUPPORTED PARAMETERS ---
+        # The 'retry_base_backoff' and 'retry_max_backoff' parameters
+        # caused the BadRequestError and have been removed.
+        # --- END OF REMOVAL ---
     )
     # --- END FIX ---
 
@@ -90,3 +87,4 @@ def get_recommendation_agent():
         ),
         tools=[] # This agent also just processes text
     )
+
