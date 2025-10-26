@@ -1,4 +1,4 @@
-from langchain_community.tools.web_scraping import ScrapeWebsiteTool
+from langchain_community.tools.link_reader import ScrapeWebsiteTool
 
 def get_scrape_tool():
     """
