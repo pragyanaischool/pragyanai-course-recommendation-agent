@@ -1,15 +1,16 @@
 import os
-from smolagents.tools import PythonTool  # ✅ correct BaseTool subclass
+from smolagents.tools import BaseTool  # ✅ Always available
 from langchain_hyperbrowser import HyperbrowserScrapeTool
 
-# Load the Hyperbrowser API key
+
+# --- API Key Setup ---
 HYPERBROWSER_API_KEY = os.getenv("HYPERBROWSER_API_KEY")
 
-# Initialize the Hyperbrowser scraper
 _hyperbrowser_scraper = HyperbrowserScrapeTool(api_key=HYPERBROWSER_API_KEY)
 
+
 def _scrape_website_with_hyperbrowser(url: str) -> str:
-    """Scrape a website using Hyperbrowser."""
+    """Internal function to scrape a website using Hyperbrowser."""
     if not HYPERBROWSER_API_KEY:
         return "Error: HYPERBROWSER_API_KEY environment variable is not set."
 
@@ -23,15 +24,21 @@ def _scrape_website_with_hyperbrowser(url: str) -> str:
     except Exception as e:
         return f"Error scraping website {url}: {e}"
 
-def get_scrape_tool():
-    """Return a SmolAgents-compatible scraping tool."""
-    scrape_tool = PythonTool(
-        name="scrape_website_with_hyperbrowser",
-        description=(
-            "Scrapes a single website URL using Hyperbrowser and returns Markdown text content."
-        ),
-        func=_scrape_website_with_hyperbrowser,  # ✅ Must be a Python callable
-    )
-    return scrape_tool
 
+# --- ✅ FIX: Wrap it in a subclass of BaseTool ---
+class HyperbrowserScrapeToolWrapper(BaseTool):
+    name = "scrape_website_with_hyperbrowser"
+    description = (
+        "Scrapes a single website URL using Hyperbrowser and returns the content "
+        "as Markdown text."
+    )
+
+    def forward(self, url: str) -> str:
+        """Implements the tool execution logic."""
+        return _scrape_website_with_hyperbrowser(url)
+
+
+def get_scrape_tool():
+    """Return a SmolAgents-compatible BaseTool instance."""
+    return HyperbrowserScrapeToolWrapper()
 
