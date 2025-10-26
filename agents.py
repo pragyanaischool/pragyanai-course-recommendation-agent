@@ -1,6 +1,10 @@
 import os
 from smolagents import CodeAgent
-from smolagents.models.litellm import LiteLLMModel
+# --- THIS IS THE FIX ---
+# The import path was incorrect. LiteLLMModel is directly in smolagents.models
+from smolagents.models import LiteLLMModel
+# --- END FIX ---
+
 
 # --- THIS IS THE NEW MODEL ---
 NEW_MODEL_NAME = "meta-llama/llama-4-maverick-17b-128e-instruct"
