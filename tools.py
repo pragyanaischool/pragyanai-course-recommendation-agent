@@ -1,11 +1,11 @@
 import os
-from smolagents.tools import BaseTool  # ✅ Always available
+from smolagents.tools import BaseTool
 from langchain_hyperbrowser import HyperbrowserScrapeTool
 
-
-# --- API Key Setup ---
+# --- Load API Key ---
 HYPERBROWSER_API_KEY = os.getenv("HYPERBROWSER_API_KEY")
 
+# --- Initialize the actual Hyperbrowser scraper ---
 _hyperbrowser_scraper = HyperbrowserScrapeTool(api_key=HYPERBROWSER_API_KEY)
 
 
@@ -25,7 +25,7 @@ def _scrape_website_with_hyperbrowser(url: str) -> str:
         return f"Error scraping website {url}: {e}"
 
 
-# --- ✅ FIX: Wrap it in a subclass of BaseTool ---
+# ✅ FIX: Implement both forward() and __call__() methods
 class HyperbrowserScrapeToolWrapper(BaseTool):
     name = "scrape_website_with_hyperbrowser"
     description = (
@@ -33,9 +33,18 @@ class HyperbrowserScrapeToolWrapper(BaseTool):
         "as Markdown text."
     )
 
+    # Main callable used by the agent
     def forward(self, url: str) -> str:
-        """Implements the tool execution logic."""
         return _scrape_website_with_hyperbrowser(url)
+
+    # Required abstract method
+    def __call__(self, *args, **kwargs):
+        if args:
+            return self.forward(*args)
+        elif "url" in kwargs:
+            return self.forward(kwargs["url"])
+        else:
+            return "Error: Missing URL argument."
 
 
 def get_scrape_tool():
