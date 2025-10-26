@@ -5,7 +5,7 @@ from langchain_hyperbrowser import HyperbrowserScrapeTool
 # --- Load API Key ---
 HYPERBROWSER_API_KEY = os.getenv("HYPERBROWSER_API_KEY")
 
-# --- Initialize the actual Hyperbrowser scraper ---
+# --- Initialize Hyperbrowser scraper ---
 _hyperbrowser_scraper = HyperbrowserScrapeTool(api_key=HYPERBROWSER_API_KEY)
 
 
@@ -25,7 +25,7 @@ def _scrape_website_with_hyperbrowser(url: str) -> str:
         return f"Error scraping website {url}: {e}"
 
 
-# ✅ FIX: Implement both forward() and __call__() methods
+# ✅ FIXED: SmolAgents-Compatible Wrapper
 class HyperbrowserScrapeToolWrapper(BaseTool):
     name = "scrape_website_with_hyperbrowser"
     description = (
@@ -33,11 +33,9 @@ class HyperbrowserScrapeToolWrapper(BaseTool):
         "as Markdown text."
     )
 
-    # Main callable used by the agent
     def forward(self, url: str) -> str:
         return _scrape_website_with_hyperbrowser(url)
 
-    # Required abstract method
     def __call__(self, *args, **kwargs):
         if args:
             return self.forward(*args)
@@ -46,8 +44,12 @@ class HyperbrowserScrapeToolWrapper(BaseTool):
         else:
             return "Error: Missing URL argument."
 
+    # ✅ New method required by CodeAgent template
+    def to_code_prompt(self) -> str:
+        """Return the string prompt representation for the agent system message."""
+        return f"{self.name}(url: str) -> str  # {self.description}"
+
 
 def get_scrape_tool():
     """Return a SmolAgents-compatible BaseTool instance."""
     return HyperbrowserScrapeToolWrapper()
-
