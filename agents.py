@@ -6,7 +6,7 @@ from smolagents.models import LiteLLMModel
 # --- THIS IS THE MODEL FIX ---
 # We are NOW sticking to Groq's Llama 3 70b model, which has a much higher
 # tokens-per-minute (TPM) rate limit. This will fix the rate limit errors.
-NEW_MODEL_NAME = "groq/llama-3.1-8b-instant"
+NEW_MODEL_NAME = "groq/meta-llama/llama-4-scout-17b-16e-instruct"
 # --- END MODEL FIX ---
 
 def get_model(model_name=NEW_MODEL_NAME):
@@ -87,4 +87,5 @@ def get_recommendation_agent():
         ),
         tools=[] # This agent also just processes text
     )
+
 
