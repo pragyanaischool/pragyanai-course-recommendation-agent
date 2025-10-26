@@ -1,3 +1,4 @@
+import os
 from langchain.tools import tool
 from langchain_hyperbrowser import HyperbrowserScrapeTool
 
