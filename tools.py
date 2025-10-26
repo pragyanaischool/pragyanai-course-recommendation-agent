@@ -1,8 +1,15 @@
 from langchain.tools import tool
 from langchain_hyperbrowser import HyperbrowserScrapeTool
 
+# --- MODIFICATION ---
+# Load the Hyperbrowser API key from environment variables
+# You MUST set this environment variable for the tool to work.
+HYPERBROWSER_API_KEY = os.getenv("HYPERBROWSER_API_KEY")
+
 # Initialize the underlying tool once to be reused
-_hyperbrowser_scraper = HyperbrowserScrapeTool()
+# Pass the API key during initialization
+_hyperbrowser_scraper = HyperbrowserScrapeTool(api_key=HYPERBROWSER_API_KEY)
+# --- END MODIFICATION ---
 
 @tool
 def scrape_website_with_hyperbrowser(url: str) -> str:
