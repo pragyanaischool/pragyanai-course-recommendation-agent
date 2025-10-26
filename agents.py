@@ -1,6 +1,6 @@
 from smolagents import CodeAgent, LiteLLMModel
 
-def get_model(model_name="groq/openai/gpt-oss-120b"):
+def get_model(model_name="groq/meta-llama/llama-4-maverick-17b-128e-instruct"):
     """Initializes the LiteLLMModel to connect to Groq."""
     # LiteLLMModel can call any provider LiteLLM supports, including Groq.
     # It automatically looks for the "GROQ_API_KEY" environment variable.
@@ -24,7 +24,7 @@ def get_course_analyst():
     """
     return CodeAgent(
         name="Course_Analyst",
-        model=get_model(model_name="groq/openai/gpt-oss-120b"), # Use a stronger model for JSON extraction
+        model=get_model(model_name="groq/meta-llama/llama-4-maverick-17b-128e-instruct"), # Use a stronger model for JSON extraction
         description="This agent is an expert at reading raw text and converting it into structured JSON data.",
         tools=[] # This agent doesn't need external tools
     )
