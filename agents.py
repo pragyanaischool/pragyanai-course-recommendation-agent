@@ -7,7 +7,7 @@ from smolagents.models import LiteLLMModel
 
 
 # --- THIS IS THE NEW MODEL ---
-NEW_MODEL_NAME = "groq/meta-llama/llama-4-maverick-17b-128e-instruct"
+NEW_MODEL_NAME = "groq/llama-3.1-8b-instant"
 # --- END NEW MODEL ---
 
 def get_model(model_name=NEW_MODEL_NAME):
