@@ -27,10 +27,6 @@ def get_model(model_name=NEW_MODEL_NAME):
         api_key=api_key,
         num_retries=5, # Automatically retry up to 5 times
         retry_strategy="exponential_backoff" # Use a delay between retries
-        # --- REMOVED UNSUPPORTED PARAMETERS ---
-        # The 'retry_base_backoff' and 'retry_max_backoff' parameters
-        # caused the BadRequestError and have been removed.
-        # --- END OF REMOVAL ---
     )
     # --- END FIX ---
 
@@ -87,5 +83,4 @@ def get_recommendation_agent():
         ),
         tools=[] # This agent also just processes text
     )
-
 
