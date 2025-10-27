@@ -1,168 +1,177 @@
 import streamlit as st
-import os
-import json  # <-- Import JSON for parsing
+import json
+import time
+import os  # Import os to set the environment variable
 from agents import get_course_scraper, get_course_analyst, get_recommendation_agent
 from tools import get_scrape_tool
-# --- FIX: Import Text Splitter ---
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 
-# --- Page Config ---
-st.set_page_config(
-    page_title="PragyanAI Course Agent",
-    page_icon="🤖",
-    layout="wide"
-)
+# --- NEW RAG IMPORTS ---
+# We need these to create and query an in-memory vector database
+from langchain_community.vectorstores import FAISS
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+# --- END NEW RAG IMPORTS ---
+
+st.set_page_config(page_title="PragyanAI Course Agent", layout="wide")
 
 # --- Header ---
-st.title("🤖 PragyanAI Course Recommendation Agent")
-st.markdown("""
-This app uses a team of **SmolAgents** to recommend courses based on your preferences.
-Enter a URL of a course catalog and your learning goals, and the agents will do the rest!
-""")
+st.title("PragyanAI Course Recommendation Agent 🤖")
+st.markdown("This app uses a team of SmolAgents to recommend courses based on your preferences.")
+st.markdown("---")
 
-# --- API Key Management ---
-st.sidebar.header("🔑 API Keys")
-st.sidebar.markdown("""
-You need API keys for the services this app uses:
-1.  **Groq API Key**: For the AI models.
-2.  **Hyperbrowser API Key**: For web scraping.
-""")
+# --- User Inputs ---
+col1, col2 = st.columns(2)
+with col1:
+    url = st.text_input("Enter the URL of the course page to scrape:", "https://www.pragyanai.school/courses")
+with col2:
+    user_preferences = st.text_input("Enter your course preferences:", "I'm interested in AI and Data Science.")
 
-groq_api_key = st.sidebar.text_input("Groq API Key (GROQ_API_KEY)", type="password")
-hyperbrowser_api_key = st.sidebar.text_input("Hyperbrowser API Key (HYPERBROWSER_API_KEY)", type="password")
+# --- API Key Input ---
+st.sidebar.title("Configuration")
+api_key = st.sidebar.text_input("Enter your API Key (Groq or other):", type="password")
 
-if groq_api_key:
-    os.environ["GROQ_API_KEY"] = groq_api_key
-if hyperbrowser_api_key:
-    os.environ["HYPERBROWSER_API_KEY"] = hyperbrowser_api_key
+if 'API_KEY_SET' not in st.session_state:
+    st.session_state.API_KEY_SET = False
 
-# --- User Input ---
-st.header("1. Define Your Search")
-course_url = st.text_input(
-    "Enter the URL of the course catalog:",
-    "https://www.pragyanai.school/courses"
-)
-user_preferences = st.text_area(
-    "What are your learning goals?",
-    "I'm a beginner looking to get into data science. I'm interested in Python, pandas, and basic machine learning."
-)
+if api_key:
+    # Set the API key for all agents in this session
+    # This key will be found by the get_model() function in agents.py
+    os.environ["GROQ_API_KEY"] = api_key
+    
+    # Also set other keys to be safe (LiteLLM checks many)
+    os.environ["TOGETHER_API_KEY"] = api_key
+    os.environ["HF_TOKEN"] = api_key
+    os.environ["OPENAI_API_KEY"] = api_key # Just in case
+    
+    st.session_state.API_KEY_SET = True
 
-if st.button("🚀 Start Recommendation Process"):
-    if not groq_api_key or not hyperbrowser_api_key:
-        st.error("Please enter both Groq and Hyperbrowser API keys in the sidebar to proceed.")
+
+# --- Main Execution ---
+if st.button("Find Courses"):
+    if not st.session_state.API_KEY_SET:
+        st.error("Please enter your API Key in the sidebar.")
     else:
+        st.info("Starting the agentic workflow... This may take a moment.")
+        
         try:
-            st.info("Starting the agentic workflow... This may take a moment.")
-            
-            # --- Initialize Agents and Tools ---
-            scrape_tool = get_scrape_tool()
-            scraper_agent = get_course_scraper(scrape_tool)
-            analyst_agent = get_course_analyst()
-            recommender_agent = get_recommendation_agent()
+            # Initialize Agents and Tools
+            with st.spinner("Initializing agents and tools..."):
+                scrape_tool = get_scrape_tool()
+                scraper_agent = get_course_scraper(scrape_tool)
+                analyst_agent = get_course_analyst()
+                recommender_agent = get_recommendation_agent()
 
-            # --- Agent Workflow ---
-            
-            # Step 1: Scrape the website
-            with st.spinner("Step 1/3: The Scraper Agent is reading the website..."):
-                scraper_prompt = f"Please scrape the full text content from this URL: {course_url}"
+            # --- Step 1: Scrape Website (No Change) ---
+            with st.spinner("Step 1/4: Scraper Agent is reading the website..."):
+                scraper_prompt = f"Scrape the website at this URL: {url}"
                 scraped_data = scraper_agent.run(scraper_prompt)
-                if scraped_data.startswith("Error:"):
-                    st.error(f"Scraping failed: {scraped_data}")
-                    st.stop()
-            st.success("Step 1/3: Scraping complete.")
-
-            # --- FIX: Chunk the Scraped Data ---
-            st.info("Splitting scraped data into manageable chunks...")
-            text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=8000,  # Aim for chunks smaller than the limit
-                chunk_overlap=400,
-                length_function=len,
-            )
-            text_chunks = text_splitter.split_text(scraped_data)
-            st.info(f"Data split into {len(text_chunks)} chunk(s).")
-            # --- END FIX ---
-
-            # Step 2: Analyze the scraped data
-            with st.spinner(f"Step 2/3: The Analyst Agent is extracting courses from {len(text_chunks)} chunk(s)..."):
                 
-                # --- FIX: Loop through chunks and aggregate results ---
-                all_courses = []
-                total_chunks = len(text_chunks)
+                if "Error: HYPERBROWSER_API_KEY" in scraped_data:
+                    st.error("Hyperbrowser API Key is not set. Please set the HYPERBROWSER_API_KEY environment variable.")
+                    raise Exception("Hyperbrowser API Key missing.")
+                    
+            st.success("Step 1/4: Scraping complete.")
 
-                for i, chunk in enumerate(text_chunks):
-                    st.spinner(f"Step 2/3: Analyzing chunk {i+1} of {total_chunks}...")
+            # --- STEP 2: RAG Pipeline (Chunk, Embed, Search) ---
+            
+            # 2a. Chunk the data
+            with st.spinner("Step 2/4: Chunking and embedding text..."):
+                text_splitter = RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=200)
+                chunks = text_splitter.split_text(scraped_data)
+                
+                # 2b. Initialize Embeddings & Create Vector DB
+                # This uses a free, local model to create embeddings
+                embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+                
+                # This creates an in-memory vector database
+                vector_store = FAISS.from_texts(chunks, embeddings)
+                st.success(f"Step 2/4: Created vector database with {len(chunks)} chunks.")
+
+            # 2c. Search for relevant chunks
+            with st.spinner(f"Step 3/4: Searching for chunks relevant to: '{user_preferences}'..."):
+                # Find the top 5 chunks that match the user's query
+                relevant_chunks = vector_store.similarity_search(user_preferences, k=5)
+                st.success(f"Step 3/4: Found {len(relevant_chunks)} relevant text chunks.")
+
+            # 2d. Analyze ONLY the relevant chunks
+            with st.spinner(f"Step 3/4: Analyst Agent is processing {len(relevant_chunks)} chunks..."):
+                all_courses = []
+                
+                for i, chunk in enumerate(relevant_chunks):
+                    st.write(f"Analyzing chunk {i+1}/{len(relevant_chunks)}...")
+                    
+                    # Define the prompt for the analyst agent
                     analyst_prompt = f"""
-                    Analyze the following raw website text and extract a list of courses. 
-                    For each course, please extract the 'title', 'description', and 'url' (if available).
-                    Return the result as a clean JSON list, where each item is an object.
-                    Example:
+                    Analyze the following raw website text and extract a list of courses.
+                    For each course, extract the 'title', 'description', and 'url' (if available).
+                    Return the result as a clean JSON list. If no courses are found, return an empty list [].
+
+                    Here is the JSON schema to follow:
                     [
-                        {{"title": "Intro to Python", "description": "Learn the basics...", "url": "/courses/python"}},
-                        {{"title": "Advanced ML", "description": "Deep dive into models...", "url": "/courses/ml"}}
+                      {{
+                        "title": "Course Title",
+                        "description": "Course description.",
+                        "url": "https://example.com/course-url"
+                      }}
                     ]
 
-                    If no courses are found in this chunk, return an empty list [].
-
-                    Raw Text Chunk:
-                    {chunk}
+                    Raw Text:
+                    "{chunk.page_content}"
                     """
                     
                     try:
-                        # Run agent on the chunk
-                        chunk_result_str = analyst_agent.run(analyst_prompt)
+                        # Call the agent
+                        chunk_result = analyst_agent.run(analyst_prompt)
                         
-                        # Attempt to parse the JSON response
-                        if chunk_result_str:
-                            chunk_courses = json.loads(chunk_result_str)
-                            if isinstance(chunk_courses, list):
-                                all_courses.extend(chunk_courses)
+                        # Parse the JSON result from the agent
+                        courses = json.loads(chunk_result)
+                        if courses:
+                            all_courses.extend(courses)
+                        
+                        # Add a small delay to respect rate limits, even though we're processing fewer chunks
+                        time.sleep(1) 
                         
                     except json.JSONDecodeError:
-                        st.warning(f"Agent returned invalid JSON for chunk {i+1}. Skipping chunk.")
+                        st.error(f"Error: Analyst agent returned invalid JSON for chunk {i+1}.")
+                        st.write("Agent output:", chunk_result)
                     except Exception as e:
-                        st.warning(f"Error processing chunk {i+1}: {e}")
-                
-                # Use the aggregated list
-                structured_data = json.dumps(all_courses, indent=2)
-                # --- END FIX ---
+                        st.error(f"Error processing chunk {i+1}: {e}")
+                        # Stop processing if one chunk fails
+                        raise
+                        
+                st.success(f"Step 3/4: Analysis complete. Found {len(all_courses)} relevant courses.")
 
-                if not all_courses:
-                    st.error("Analysis failed: The agent did not find any courses in the document.")
-                    st.stop()
-            st.success(f"Step 2/3: Analysis complete. Found {len(all_courses)} courses.")
 
-            # Step 3: Get recommendations
-            with st.spinner("Step 3/3: The Recommender Agent is preparing your recommendations..."):
-                recommender_prompt = f"""
-                Here is a list of available courses in JSON format:
-                {structured_data} 
+            # --- Step 3: Get Recommendation ---
+            if not all_courses:
+                st.warning("No relevant courses were found based on your preferences.")
+            else:
+                with st.spinner("Step 4/4: Recommendation Agent is preparing your advice..."):
+                    # Convert course list back to JSON string for the agent
+                    courses_json = json.dumps(all_courses, indent=2)
+                    
+                    recommender_prompt = f"""
+                    You are a helpful and friendly course advisor.
+                    Based on the user's preferences and this list of relevant courses, 
+                    provide a recommendation.
 
-                Here are the user's preferences:
-                "{user_preferences}"
+                    User Preferences: "{user_preferences}"
 
-                Please analyze the courses and the user's preferences. 
-                Return a markdown-formatted response with:
-                1.  A short summary of why you are recommending these courses.
-                2.  A list of the top 3-5 recommended courses.
-                3.  For each recommended course, include its title, description, and URL (if available).
-                """
-                recommendations = recommender_agent.run(recommender_prompt)
-            st.success("Step 3/3: Recommendations ready!")
+                    Available Courses:
+                    {courses_json}
 
-            # --- Display Results ---
-            st.header("✅ Your Course Recommendations")
-            st.markdown(recommendations)
-            
-            with st.expander("Show Analyzed Course Data (JSON)"):
-                # Display the aggregated JSON
-                st.json(structured_data)
-            
-            with st.expander("Show Raw Scraped Text"):
-                st.text(scraped_data)
+                    Please format your answer in friendly markdown.
+                    Start with a summary, then list 1-3 of the *most* relevant courses 
+                    with their title and description.
+                    """
+                    
+                    recommendation = recommender_agent.run(recommender_prompt)
+
+                st.success("Step 4/4: Recommendation generated!")
+                st.markdown("---")
+                st.header("Your Course Recommendation")
+                st.markdown(recommendation)
 
         except Exception as e:
             st.error(f"An error occurred during the agent workflow:\n{e}")
-            st.exception(e)
-
-
 
